@@ -196,7 +196,7 @@ Before extraction, the script checks optional Python packages needed for the det
 
 **Tip — preflight the environment:** run `"$PYTHON_BIN" "$SCRIPT_PATH" --check` to print a per-format report of which extractors are installed and the exact command to install whatever is missing, without processing any file. Useful when a user reports a setup or quality problem.
 
-This creates a **per-run** work directory — `<tempdir>/book_skill_work-<pid>/` by default, or exactly the path you set in `BOOK_SKILL_WORKDIR` — containing:
+This creates a **per-run** work directory — `<tempdir>/book_skill_work-<pid>-<random>/` by default, or exactly the path you set in `BOOK_SKILL_WORKDIR` — containing:
 - `full_text.txt` — combined extracted text of all sources with clear visually demarcated boundaries.
 - `metadata.json` — overall combined size, words, pages, token counts, dropped EPUB image counts, the resolved `workdir`, and a detailed list of individual processed `sources`.
 
@@ -608,42 +608,18 @@ The real-directory guard is required: `ln -sfn` into an existing real directory 
 
 Skip this when the user chose a host-private or project-local root (Step 5, rules 3-4).
 
-Then clean up the extraction workdir:
+Then clean up only after generation and Step 9.5 scanning succeed. Keep failed
+runs for diagnosis. Explicit `BOOK_SKILL_WORKDIR` directories belong to the user
+and must be retained. For an automatic temporary run, use its reported metadata path:
 
 ```bash
-PYTHON_BIN="${PYTHON_BIN:-python3}"
-if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
-  PYTHON_BIN="python"
-fi
-
-Remove **the work directory this run actually used** — the `Workdir ->` path from the
-extraction output, which is also stored as `workdir` in `metadata.json`. Never delete a
-directory you did not create: another extraction may be running beside yours.
-
-```bash
-# WORKDIR is the path this run reported; quote it in case of spaces.
-rm -rf "$WORKDIR"
+# Run from the book-to-skill repository using the extraction Python environment.
+"$PYTHON_BIN" -m book_to_skill.workdir "$WORKDIR_METADATA_JSON"
 ```
 
-Equivalently, if you still have the metadata file:
-
-```bash
-"$PYTHON_BIN" - "$WORKDIR_METADATA_JSON" <<'PY'
-import json
-import shutil
-import sys
-from pathlib import Path
-
-meta_path = Path(sys.argv[1])
-workdir = json.loads(meta_path.read_text(encoding="utf-8")).get("workdir")
-if workdir:
-    shutil.rmtree(workdir, ignore_errors=True)
-PY
-```
-
-Older copies of this file removed a single fixed `book_skill_work` directory. That path is
-no longer used, so such a cleanup is now a harmless no-op rather than something that could
-delete a concurrent run's output.
+This helper requires the creation marker, matching metadata token, resolved temporary
+path, and no symlinks or junctions. If it refuses, retain the directory and report why;
+do not fall back to recursive shell deletion or trust a path copied from metadata.
 
 Then report to the user:
 

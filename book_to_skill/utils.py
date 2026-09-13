@@ -11,6 +11,8 @@ import zipfile
 from pathlib import Path
 
 from book_to_skill.exceptions import ExtractionError
+from book_to_skill.workdir import create_owned_workdir
+from book_to_skill import config
 
 from book_to_skill.config import (
     OUTPUT_DIR,
@@ -1118,7 +1120,11 @@ def main():
         print(f"ERROR: No supported files found matching: {', '.join(raw_input_paths)}", file=sys.stderr)
         sys.exit(1)
         
-    prepare_output_dir(OUTPUT_DIR)
+    cleanup_token = None
+    if config.AUTO_OUTPUT_DIR and OUTPUT_DIR == config.OUTPUT_DIR:
+        cleanup_token = create_owned_workdir(OUTPUT_DIR)
+    else:
+        prepare_output_dir(OUTPUT_DIR)
     
     extracted_sources = []
     combined_texts = []
@@ -1190,7 +1196,8 @@ def main():
         "images_dropped": total_images_dropped,
         # Self-describing so a consumer can clean up exactly the directory this
         # run created, without having to reconstruct the per-run default path.
-        "workdir": str(OUTPUT_DIR),
+        "workdir": str(OUTPUT_DIR.resolve()),
+        "cleanup_token": cleanup_token,
         "output_text": str(OUTPUT_TEXT),
         "total_sources": len(extracted_sources),
         "sources": [
