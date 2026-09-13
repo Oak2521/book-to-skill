@@ -91,3 +91,22 @@ def test_extractor_auto_and_explicit_workdir(tmp_path):
     with pytest.raises(ValueError):
         cleanup_workdir(explicit / 'metadata.json')
     assert (explicit / 'full_text.txt').exists()
+
+
+def test_system_temp_alias_is_canonicalized_without_trusting_candidate_links(tmp_path, monkeypatch):
+    from pathlib import Path
+    from book_to_skill.config import default_output_dir
+    alias = tmp_path.parent / 'system-temp-alias'
+    real_resolve, real_is_symlink = Path.resolve, Path.is_symlink
+    monkeypatch.setattr('tempfile.gettempdir', lambda: str(alias))
+    monkeypatch.setattr(Path, 'resolve', lambda self, **kw: tmp_path if self == alias else real_resolve(self, **kw))
+    monkeypatch.setattr(Path, 'is_symlink', lambda self: self == alias or real_is_symlink(self))
+    path = default_output_dir()
+    assert path.parent == tmp_path
+    token = create_owned_workdir(path)
+    meta = metadata(path, token)
+    with pytest.raises(ValueError, match='linked path'):
+        cleanup_workdir(alias / path.name / meta.name)
+    assert path.exists()
+    cleanup_workdir(meta)
+    assert not path.exists()

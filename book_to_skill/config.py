@@ -5,7 +5,7 @@ from pathlib import Path
 
 def default_output_dir() -> Path:
     """Unpredictable per-task path, also unique if a process ID is reused."""
-    return Path(tempfile.gettempdir()) / f"book_skill_work-{os.getpid()}-{uuid.uuid4().hex}"
+    return Path(tempfile.gettempdir()).resolve() / f"book_skill_work-{os.getpid()}-{uuid.uuid4().hex}"
 
 
 AUTO_OUTPUT_DIR = not bool(os.environ.get("BOOK_SKILL_WORKDIR"))

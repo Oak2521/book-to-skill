@@ -19,7 +19,9 @@ def _plain_path(path):
 
 def _temporary_child(path):
     path = _plain_path(path)
-    root = _plain_path(tempfile.gettempdir()).resolve()
+    # The system temp root may legitimately contain aliases (macOS /var).
+    # Canonicalize that trusted root; never canonicalize a candidate before its link checks.
+    root = Path(tempfile.gettempdir()).resolve()
     if path.resolve().parent != root or not path.name.startswith('book_skill_work-'):
         raise ValueError('Cleanup requires an owned direct child of the temporary directory')
     return path
