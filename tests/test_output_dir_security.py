@@ -51,7 +51,7 @@ def test_prepare_output_dir_rejects_non_directory(tmp_path):
 def test_prepare_output_dir_tightens_permissions_on_existing_own_dir(tmp_path):
     target = tmp_path / "work"
     target.mkdir()
-    os.chmod(target, 0o755)  # broader access than 0700, without making the fixture writable by others
+    os.chmod(target, 0o711)  # extra traversal bits, without granting others read/write access
 
     prepare_output_dir(target)
 
