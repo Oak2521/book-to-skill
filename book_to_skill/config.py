@@ -10,6 +10,8 @@ def default_output_dir() -> Path:
 
 AUTO_OUTPUT_DIR = not bool(os.environ.get("BOOK_SKILL_WORKDIR"))
 OUTPUT_DIR = Path(os.environ.get("BOOK_SKILL_WORKDIR") or default_output_dir())
+# Preserve provenance if a long-lived caller later replaces the output constants.
+AUTO_OUTPUT_PATH = OUTPUT_DIR if AUTO_OUTPUT_DIR else None
 OUTPUT_TEXT = OUTPUT_DIR / "full_text.txt"
 OUTPUT_META = OUTPUT_DIR / "metadata.json"
 

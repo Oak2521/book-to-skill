@@ -110,3 +110,23 @@ def test_system_temp_alias_is_canonicalized_without_trusting_candidate_links(tmp
     assert path.exists()
     cleanup_workdir(meta)
     assert not path.exists()
+
+
+def test_explicit_output_reconfigured_after_import_is_not_marked_owned(tmp_path, monkeypatch):
+    import sys
+    from book_to_skill import config, utils
+    source = tmp_path / 'synthetic.md'
+    source.write_text('Chapter 1\nSynthetic content.\n', encoding='utf-8')
+    explicit = tmp_path / 'user-work'
+    monkeypatch.setenv('BOOK_SKILL_WORKDIR', str(explicit))
+    # Long-lived callers can replace cached output constants after module import.
+    for module in (config, utils):
+        monkeypatch.setattr(module, 'OUTPUT_DIR', explicit)
+        monkeypatch.setattr(module, 'OUTPUT_TEXT', explicit / 'full_text.txt')
+        monkeypatch.setattr(module, 'OUTPUT_META', explicit / 'metadata.json')
+    monkeypatch.setattr(sys, 'argv', ['extract.py', str(source), '--mode', 'text', '--install-missing', 'no'])
+    utils.main()
+    meta = json.loads((explicit / 'metadata.json').read_text(encoding='utf-8'))
+    assert meta['cleanup_token'] is None
+    assert not (explicit / '.book-skill-owner.json').exists()
+    assert 'Synthetic content.' in (explicit / 'full_text.txt').read_text(encoding='utf-8')
