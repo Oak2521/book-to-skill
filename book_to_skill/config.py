@@ -1,13 +1,17 @@
 import os
 import tempfile
+import uuid
 from pathlib import Path
 
-OUTPUT_DIR = Path(
-    os.environ.get(
-        "BOOK_SKILL_WORKDIR",
-        str(Path(tempfile.gettempdir()) / "book_skill_work"),
-    )
-)
+def default_output_dir() -> Path:
+    """Unpredictable per-task path, also unique if a process ID is reused."""
+    return Path(tempfile.gettempdir()).resolve() / f"book_skill_work-{os.getpid()}-{uuid.uuid4().hex}"
+
+
+AUTO_OUTPUT_DIR = not bool(os.environ.get("BOOK_SKILL_WORKDIR"))
+OUTPUT_DIR = Path(os.environ.get("BOOK_SKILL_WORKDIR") or default_output_dir())
+# Preserve provenance if a long-lived caller later replaces the output constants.
+AUTO_OUTPUT_PATH = OUTPUT_DIR if AUTO_OUTPUT_DIR else None
 OUTPUT_TEXT = OUTPUT_DIR / "full_text.txt"
 OUTPUT_META = OUTPUT_DIR / "metadata.json"
 
@@ -28,6 +32,7 @@ SUPPORTED_EXTENSIONS = {
 }
 
 PYTHON_DEPENDENCIES = {
+    "pdf_inspector": "pdf-inspector>=1.15,<2",
     "docling": "docling",
     "pypdf": "pypdf",
     "pdfminer": "pdfminer.six",
@@ -35,6 +40,7 @@ PYTHON_DEPENDENCIES = {
     "bs4": "beautifulsoup4",
     "docx": "python-docx",
     "striprtf": "striprtf",
+    "trafilatura": "trafilatura",
 }
 
 

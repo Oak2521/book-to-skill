@@ -52,6 +52,15 @@ python3 tools/validate_skill.py SKILL.md
   listed in `BACKERS.md`). This keeps the project's most visible surface reserved
   for the people funding its upkeep. Building something inspired by book-to-skill
   is genuinely appreciated — sharing it in an issue or discussion is welcome.
+- **Use cases are the exception, and they live elsewhere.** An account of a
+  conversion you ran — the document, the command, the measured tokens, what the
+  skill turned out to be good for and where it fell short — belongs in
+  [book-to-skill-use-cases](https://github.com/virgiliojr94/book-to-skill-use-cases):
+  your write-up as a Gist on your own account, one line in the index there, no
+  template and no CI. That is evidence of use, not promotion, which is why it is
+  welcome where a "built with" link is not. It does not change this rule: the
+  README and `docs/` stay reserved for sponsors, and entries without measurements
+  read as ads.
 
 ## Releases
 
@@ -60,13 +69,26 @@ from Conventional Commit messages — do not hand-edit it:
 
 ```bash
 # 1. bump version in pyproject.toml
-# 2. regenerate CHANGELOG.md from commits (needs git-cliff installed locally)
-git-cliff --tag vX.Y.Z -o CHANGELOG.md
+# 2. prepend the new section to CHANGELOG.md (needs git-cliff locally,
+#    or run it without installing: uvx git-cliff …)
+git-cliff --tag vX.Y.Z --unreleased --prepend CHANGELOG.md
 # 3. commit, tag, push
 git commit -am "chore(release): vX.Y.Z"
 git tag vX.Y.Z && git push origin master vX.Y.Z
 # 4. publish a GitHub Release using the new CHANGELOG section as notes
 ```
+
+**Use `--unreleased --prepend`, not `-o CHANGELOG.md`.** The `-o` form
+rewrites the whole file from commit subjects, which discards the hand-written
+release notes for v1.0–v1.3 — the ones carrying measurements (`precision
+0.999 / recall 1.000`, the `~1000×` CJK undercount, the Gutenberg benchmark)
+that no commit subject contains. `--prepend` adds only the new section and
+leaves everything below it untouched.
+
+One edge case: if you also change `[changelog] header` in `cliff.toml`, that
+release's prepend writes the new header above the old one still sitting in the
+file — delete the stale copy by hand that once. Subsequent releases are clean,
+because the file then already matches the configured header.
 
 git-cliff is a dev-only tool (a single static binary; not a runtime dependency
 of book-to-skill). See `cliff.toml` for the type→section mapping.

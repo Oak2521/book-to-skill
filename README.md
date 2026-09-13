@@ -5,7 +5,13 @@
 <h1 align="center">book-to-skill</h1>
 
 <p align="center">
-  <strong>Turn any technical book, document folder, or collection of sources into a unified agent skill — ready to study, reference, and use while you work in GitHub Copilot CLI, Amp, or Claude Code.</strong>
+  <a href="README.md"><strong>English</strong></a> ·
+  <a href="README.ru.md">Русский</a> ·
+  <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
+  <strong>Turn any technical book, document folder, or collection of sources into a unified agent skill — ready to study, reference, and use while you work in GitHub Copilot CLI, Amp, Claude Code, or Hermes Agent.</strong>
 </p>
 
 <p align="center">
@@ -61,13 +67,13 @@ The usual workarounds don't help:
 
 Once installed, you just type `/your-book-slug replication` and the agent reads the right chapter and answers from the actual content. No hallucination. No digging through PDFs. The book becomes part of your workflow.
 
-Works with any host that supports the open [Agent Skills](https://github.com/agentskills/agentskills) standard — GitHub Copilot CLI, Amp, and Claude Code all read the same `SKILL.md` format.
+Works with any host that supports the open [Agent Skills](https://github.com/agentskills/agentskills) standard — GitHub Copilot CLI, Amp, Claude Code, and Hermes Agent all read the same `SKILL.md` format.
 
 ---
 
 ## 📦 What it generates
 
-Running `/book-to-skill your-book.pdf` (or a folder, glob, or list of files) creates a full skill in your agent's skills directory (`~/.copilot/skills/<slug>/` for Copilot CLI, `~/.agents/skills/<slug>/` for Amp or cross-agent, `~/.claude/skills/<slug>/` for Claude Code):
+Running `/book-to-skill your-book.pdf` (or a folder, glob, or list of files) creates a full skill in the user-level cross-agent skills directory `~/.agents/skills/<slug>/` — one copy that Copilot CLI, Amp, and Codex discover natively; when run under Claude Code, the converter also attempts a verified symlink at `~/.claude/skills/<slug>/` — Claude Code sees the skill when the link read-back confirms it; otherwise the run report says so. Hermes Agent partitions its personal skills by category and does not scan the cross-agent root, so a Hermes install lands in `$HERMES_HOME/skills/<category>/<slug>/` instead (host-private and project-local destinations remain available on request):
 
 | File | Purpose | Size |
 |------|---------|------|
@@ -113,18 +119,24 @@ Two halves: a deterministic Python **extractor** (document → clean text + meta
 
 ## 🚀 Usage
 
-`/book-to-skill <path|folder|glob> [skill-name]` — plus analyze-only, generate-from-analysis, and update/fold-in modes.
+`/book-to-skill <path|folder|glob> [skill-name]` — plus analyze-only, generate-from-analysis, and update/fold-in modes. After a conversion, the converter can publish the skill to GitHub (private by default) so any host installs it with `npx skills add`.
 
 ▶️ **All modes and examples → [docs/usage.md](docs/usage.md)**
+
+💬 **In practice → [use cases](https://github.com/virgiliojr94/book-to-skill-use-cases)** — a DevEx book became a survey of 300+ engineers; a scanned PDF that stalled became [#130](https://github.com/virgiliojr94/book-to-skill/pull/130). Add yours: the account lives in your own Gist, the index takes a one-line PR.
 
 ---
 
 ## 📥 Install
 
 ```bash
-# Agent skill (registers /book-to-skill) — clone into your skills folder:
+# One command, any host — via the cross-agent skills CLI:
+npx skills add virgiliojr94/book-to-skill
+
+# Or manually — clone into your skills folder (registers /book-to-skill):
 git clone https://github.com/virgiliojr94/book-to-skill.git ~/.claude/skills/book-to-skill
 # (Copilot CLI: ~/.copilot/skills/ · Amp/cross-agent: ~/.agents/skills/)
+# (Hermes Agent: ${HERMES_HOME:-$HOME/.hermes}/skills/<category>/)
 ```
 
 📥 **All hosts, optional extractors, and the standalone CLI → [docs/install.md](docs/install.md)**
@@ -157,6 +169,12 @@ The extractor tries tools in order per format and uses the first available. If n
 | **Technical (code, tables, formulas)** | **`docling`** | `pip3 install docling` | ~1.5s/page |
 
 > Before extraction begins, the skill asks you whether the book is **technical** or **text-heavy** and picks the right tool automatically. Docling preserves markdown tables and code blocks; pdftotext is faster for prose-only books.
+
+> **Scanned PDFs need OCR first.** A PDF that is page images with no text layer — a photographed or scanned book — has nothing for these tools to extract. The extractor checks the first pages and stops immediately with an explanation, rather than working through the whole book to produce an empty skill. Run OCR yourself, then convert the result:
+>
+> ```bash
+> ocrmypdf input.pdf output.pdf
+> ```
 
 **EPUB:**
 
@@ -240,13 +258,3 @@ Every sponsor is listed in [BACKERS.md](BACKERS.md). Thank you for keeping open,
 ## License
 
 MIT — applies to the converter (code + skill definition) in this repository, **not** to any book or document you process with it.
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=virgiliojr94%2Fbook-to-skill&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=virgiliojr94/book-to-skill&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=virgiliojr94/book-to-skill&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=virgiliojr94/book-to-skill&type=date&legend=top-left" />
- </picture>
-</a>

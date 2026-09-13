@@ -5,6 +5,8 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
+
 from book_to_skill.config import PYTHON_DEPENDENCIES, HTML_EXTENSIONS
 
 
@@ -12,6 +14,13 @@ from book_to_skill.config import PYTHON_DEPENDENCIES, HTML_EXTENSIONS
 # format and what it needs. `modules` are optional Python packages (any one is
 # enough unless noted); `system` are external commands resolved via PATH.
 DEPENDENCY_GROUPS = [
+    {
+        "label": "PDF (smart inspection / native Markdown)",
+        "modules": ["pdf_inspector"],
+        "any_of_modules": True,
+        "system": [],
+        "note": "optional fast classifier/provenance layer; falls back to the existing PDF chain",
+    },
     {
         "label": "PDF (text-heavy)",
         "modules": ["pypdf", "pdfminer"],
@@ -43,10 +52,10 @@ DEPENDENCY_GROUPS = [
     },
     {
         "label": "HTML",
-        "modules": ["bs4"],
+        "modules": ["trafilatura", "bs4"],
         "any_of_modules": True,
         "system": [],
-        "note": "falls back to the stdlib html.parser if missing",
+        "note": "trafilatura does real boilerplate detection; falls back to bs4, then the stdlib html.parser, if missing",
     },
     {
         "label": "RTF",
@@ -70,6 +79,32 @@ DEPENDENCY_GROUPS = [
 
 def python_module_available(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
+
+
+def isolated_install_hint(module_name: str) -> str | None:
+    """Explain a module that is installed as a tool but not importable here.
+
+    pipx — the way Docling's own docs suggest installing it — puts the package
+    in its own virtualenv and only the executable on PATH. The module is then
+    genuinely not importable from this interpreter, so "✗ python: docling" is
+    correct and useless: the user installed it, and we say it is missing.
+
+    Returns a line naming the executable and the interpreter that can import
+    it, or None when there is no such executable. Never claims the module is
+    available — the parsers import it, so a binary on PATH does not make the
+    import work; it only tells us where a working environment is.
+    """
+    executable = shutil.which(module_name)
+    if not executable:
+        return None
+    # pipx layout: <venv>/bin/<tool> — its sibling `python` can import the module.
+    venv_python = Path(executable).resolve().parent / "python"
+    where = f"\n        {venv_python} scripts/extract.py …" if venv_python.exists() else ""
+    return (
+        f"a `{module_name}` command exists at {executable}, so it is installed in an "
+        f"isolated environment (pipx?).\n        Run the extractor with that "
+        f"environment's Python, or install it into this one:{where}"
+    )
 
 
 def missing_python_packages(module_names: list[str]) -> list[str]:
@@ -122,12 +157,21 @@ def offer_dependency_install(
     module_names: list[str],
     fallback: str | None,
     install_mode: str,
+    any_of_modules: bool = False,
 ) -> None:
-    packages = missing_python_packages(module_names)
-    if not packages:
+    missing_packages = missing_python_packages(module_names)
+    if not missing_packages or (
+        any_of_modules and len(missing_packages) < len(module_names)
+    ):
         return
 
-    message = f"{feature} uses {', '.join(packages)} if installed"
+    package_choices = [PYTHON_DEPENDENCIES[name] for name in module_names]
+    if any_of_modules:
+        message = f"{feature} uses one of {', '.join(package_choices)} if installed"
+        packages = missing_packages[:1]
+    else:
+        message = f"{feature} uses {', '.join(missing_packages)} if installed"
+        packages = missing_packages
     if fallback:
         message += f", otherwise {fallback}"
     message += "."
@@ -152,7 +196,12 @@ def offer_dependency_install(
 
     if install_python_packages(packages):
         still_missing = missing_python_packages(module_names)
-        if not still_missing:
+        dependencies_satisfied = (
+            len(still_missing) < len(module_names)
+            if any_of_modules
+            else not still_missing
+        )
+        if dependencies_satisfied:
             print("Package installation complete.")
             return
         print(f"Package installation incomplete; still missing: {', '.join(still_missing)}", file=sys.stderr)
@@ -178,6 +227,7 @@ def prepare_dependencies(ext: str, extraction_mode: str, install_mode: str) -> N
             module_names=["pypdf", "pdfminer"],
             fallback="any installed Python PDF parser; extraction fails if none are available",
             install_mode=install_mode,
+            any_of_modules=True,
         )
 
     if ext == ".epub":
@@ -191,9 +241,10 @@ def prepare_dependencies(ext: str, extraction_mode: str, install_mode: str) -> N
     if ext in HTML_EXTENSIONS:
         offer_dependency_install(
             feature="HTML extraction",
-            module_names=["bs4"],
+            module_names=["trafilatura", "bs4"],
             fallback="a stdlib HTML parser",
             install_mode=install_mode,
+            any_of_modules=True,
         )
 
     if ext == ".docx":
@@ -239,6 +290,9 @@ def run_dependency_check() -> int:
             print(f"      {'✓' if ok else '✗'} python: {pip_name}")
             if not ok:
                 missing_pip_packages.append(pip_name)
+                hint = isolated_install_hint(module_name)
+                if hint:
+                    print(f"        ↳ {hint}")
 
         for cmd, pretty, hint in group["system"]:
             ok = cmd in system_present

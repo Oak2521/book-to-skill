@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "book-to-skill"
-version = "1.3.0"
+version = "1.4.0"
 description = "Convert books and documents into structured, on-demand agent skills."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -14,14 +14,17 @@ license = { text = "MIT" }
 book-to-skill = "book_to_skill.cli:main"
 
 [project.optional-dependencies]
+html = ["trafilatura"]
 epub = ["ebooklib", "beautifulsoup4"]
-pdf = ["pypdf", "pdfminer.six"]
+pdf = ["pdf-inspector>=1.15,<2", "pypdf", "pdfminer.six"]
 docx = ["python-docx"]
 rtf = ["striprtf"]
 technical = ["docling"]
 all = [
+    "trafilatura",
     "ebooklib",
     "beautifulsoup4",
+    "pdf-inspector>=1.15,<2",
     "pypdf",
     "pdfminer.six",
     "python-docx",
