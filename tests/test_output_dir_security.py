@@ -48,10 +48,10 @@ def test_prepare_output_dir_rejects_non_directory(tmp_path):
 
 
 @posix_permissions
-def test_prepare_output_dir_tightens_permissions_on_existing_own_dir(tmp_path):
+def test_prepare_output_dir_normalizes_permissions_on_existing_own_dir(tmp_path):
     target = tmp_path / "work"
     target.mkdir()
-    os.chmod(target, 0o711)  # extra traversal bits, without granting others read/write access
+    os.chmod(target, 0o500)  # owner-only starting mode; preparation restores exact 0700
 
     prepare_output_dir(target)
 
@@ -68,3 +68,24 @@ def test_prepare_output_dir_rejects_directory_owned_by_another_user(tmp_path, mo
 
     with pytest.raises(ExtractionError, match="owned by a different user"):
         prepare_output_dir(target)
+
+
+def test_prepare_output_dir_replaces_insecure_bits_instead_of_oring(monkeypatch):
+    # Model unsafe prior permissions without granting them on the real filesystem.
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    import book_to_skill.utils as utils
+
+    target = Mock()
+    target.is_symlink.return_value = False
+    target.exists.return_value = True
+    target.is_dir.return_value = True
+    target.stat.return_value = SimpleNamespace(st_uid=1000, st_mode=stat.S_IFDIR | 0o777)
+    monkeypatch.setattr(utils.os, 'getuid', lambda: 1000, raising=False)
+    chmod = Mock()
+    monkeypatch.setattr(utils.os, 'chmod', chmod)
+
+    prepare_output_dir(target)
+
+    # OR-ing owner bits into 0777 would preserve group/world access and fail this assertion.
+    chmod.assert_called_once_with(target, 0o700)
