@@ -1121,7 +1121,7 @@ def main():
         sys.exit(1)
         
     cleanup_token = None
-    if config.AUTO_OUTPUT_DIR and OUTPUT_DIR == config.OUTPUT_DIR:
+    if config.AUTO_OUTPUT_DIR and OUTPUT_DIR == config.AUTO_OUTPUT_PATH:
         cleanup_token = create_owned_workdir(OUTPUT_DIR)
     else:
         prepare_output_dir(OUTPUT_DIR)
